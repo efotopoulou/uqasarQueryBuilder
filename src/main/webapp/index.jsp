@@ -196,6 +196,9 @@
                             data: JSON.stringify(res, null, 2),
                         },
                         function(data, status) {
+
+                            if (data.error){alert('Message From Query Builder '+data.error);}
+
                             $('#donutchart').html('');
                             $('#cubeurl').removeClass('hide').find('pre').html(data.cubeurl);
                             $('#totalcount').removeClass('hide').find('pre').html(JSON.stringify(data.totalcount.count.valueOf(), null, 2));

@@ -19,6 +19,7 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.Reader;
 import java.io.StringReader;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.Arrays;
@@ -69,6 +70,11 @@ public class uqquerybuilder extends HttpServlet {
         System.out.println(cuberesponse);
 
         JSONObject donutchartJSON = new JSONObject();
+        
+        if (cuberesponse.has("error")){
+             System.out.println("exo errorrrrrrrrrr!!!!");
+         objToReturn.put("error", cuberesponse.get("error"));
+        }else{
 
         JSONArray cuberesponse_arr = cuberesponse.getJSONArray("cells");
 
@@ -133,6 +139,8 @@ public class uqquerybuilder extends HttpServlet {
 
         objToReturn.put("cubeurl", urlToLoadAsLink);
         objToReturn.put("totalcount", cuberesponse.get("summary"));
+        }
+        
 
         response.setContentType("text/x-json;charset=UTF-8");
         response.setHeader("Cache-Control", "no-cache");
@@ -143,54 +151,7 @@ public class uqquerybuilder extends HttpServlet {
         response.getWriter().close();
     }
 
-    public void outputpdf1() {
-        try {
-            Document document = new Document(PageSize.LETTER);
-            PdfWriter pdfWriter = PdfWriter.getInstance(document, new FileOutputStream("/home/eleni/Desktop/testpdf.pdf"));
-            document.open();
-            document.addAuthor("Real Gagnon");
-            document.addCreator("Real's HowTo");
-            document.addSubject("Thanks for your support");
-            document.addCreationDate();
-            document.addTitle("Please read this");
-
-            XMLWorkerHelper worker = XMLWorkerHelper.getInstance();
-
-            Report pdfReport = new Report();
-            String str = pdfReport.createReport();
-            worker.parseXHtml(pdfWriter, document, new StringReader(str));
-            document.close();
-            System.out.println("Done.");
-        } catch (IOException ex) {
-            Logger.getLogger(uqquerybuilder.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (DocumentException ex) {
-            Logger.getLogger(uqquerybuilder.class.getName()).log(Level.SEVERE, null, ex);
-        }
-    }
-
-    public void outputpdf() {
-
-        try {
-            // step 1
-            Document document = new Document();
-            // step 2
-            PdfWriter writer = PdfWriter.getInstance(document, new FileOutputStream("/home/eleni/IdeaProjects/uqasarQueryBuilderNew/src/main/webapp/pdf.pdf"));
-            // step 3
-            document.open();
-            // step 4
-            XMLWorkerHelper.getInstance().parseXHtml(writer, document,
-                    new FileInputStream("/home/eleni/IdeaProjects/uqasarQueryBuilderNew/src/main/webapp/index.html"));
-            //step 5
-            document.close();
-
-            System.out.println("PDF Created!");
-        } catch (DocumentException ex) {
-            Logger.getLogger(uqquerybuilder.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (IOException ex) {
-            Logger.getLogger(uqquerybuilder.class.getName()).log(Level.SEVERE, null, ex);
-        }
-    }
-
+   
     public String constructCubeRetrieverURL(String jsonToParse) {
 
         String urlToLoad = "http://uqasar.pythonanywhere.com/cube/jira/aggregate?";
@@ -218,16 +179,29 @@ public class uqquerybuilder extends HttpServlet {
         return urlToLoad;
     }
 
-    public static JSONObject readJsonFromUrl(String url) throws IOException, JSONException {
-        InputStream is = new URL(url).openStream();
+    public static JSONObject readJsonFromUrl(String url) throws JSONException {
+        InputStream is = null;
+        JSONObject json = null;
         try {
-            BufferedReader rd = new BufferedReader(new InputStreamReader(is, Charset.forName("UTF-8")));
-            String jsonText = readAll(rd);
-            JSONObject json = new JSONObject(jsonText);
+            is = new URL(url).openStream();
+            try {
+                BufferedReader rd = new BufferedReader(new InputStreamReader(is, Charset.forName("UTF-8")));
+                String jsonText = readAll(rd);
+                json = new JSONObject(jsonText);
+                return json;
+            } finally {
+                is.close();
+            }
+        } catch (MalformedURLException ex) {
+            Logger.getLogger(uqquerybuilder.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IOException ex) {
+            Logger.getLogger(uqquerybuilder.class.getName()).log(Level.SEVERE, null, ex);
+            json =new JSONObject();
+            json.put("error", ex);
             return json;
-        } finally {
-            is.close();
-        }
+            
+        } 
+        return json;
     }
 
     private static String readAll(Reader rd) throws IOException {

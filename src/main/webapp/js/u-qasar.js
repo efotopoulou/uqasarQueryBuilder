@@ -1,6 +1,6 @@
 $.get("/uqasarQueryBuilderNew-1.0-SNAPSHOT/getmodel",
         function(data, status) {
-           
+             if (data.error){alert('Problem in loading the model. Please reload the page! '+data.error);}
              var filters = [{
                     id: "drilldown",
                     label: "drilldown",

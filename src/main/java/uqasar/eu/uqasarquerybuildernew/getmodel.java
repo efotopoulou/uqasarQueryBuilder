@@ -55,16 +55,16 @@ public class getmodel extends HttpServlet {
 
         objToReturn.put("drilldownvalues", drilldownvalues.toString());
 
-        retrieveValues("http://uqasar.pythonanywhere.com/cube/jira/members/Status", "Status",objToReturn);
-        retrieveValues("http://uqasar.pythonanywhere.com/cube/jira/members/Priority", "Priority",objToReturn);
-        retrieveValues("http://uqasar.pythonanywhere.com/cube/jira/members/Reporter", "Reporter",objToReturn);
-        retrieveValues("http://uqasar.pythonanywhere.com/cube/jira/members/Resolution", "Resolution",objToReturn);
-        retrieveValues("http://uqasar.pythonanywhere.com/cube/jira/members/Creator", "Creator",objToReturn);
-        retrieveValues("http://uqasar.pythonanywhere.com/cube/jira/members/Project", "Project",objToReturn);
-        retrieveValues("http://uqasar.pythonanywhere.com/cube/jira/members/Assignee", "Assignee",objToReturn);
+        retrieveValues("http://uqasar.pythonanywhere.com/cube/jira/members/Status", "Status", objToReturn);
+        retrieveValues("http://uqasar.pythonanywhere.com/cube/jira/members/Priority", "Priority", objToReturn);
+        retrieveValues("http://uqasar.pythonanywhere.com/cube/jira/members/Reporter", "Reporter", objToReturn);
+        retrieveValues("http://uqasar.pythonanywhere.com/cube/jira/members/Resolution", "Resolution", objToReturn);
+        retrieveValues("http://uqasar.pythonanywhere.com/cube/jira/members/Creator", "Creator", objToReturn);
+        retrieveValues("http://uqasar.pythonanywhere.com/cube/jira/members/Project", "Project", objToReturn);
+        retrieveValues("http://uqasar.pythonanywhere.com/cube/jira/members/Assignee", "Assignee", objToReturn);
         //retrieveValues("http://uqasar.pythonanywhere.com/cube/jira/members/jira_Issuekey", "jira_Issuekey");
-        retrieveValues("http://uqasar.pythonanywhere.com/cube/jira/members/Type", "Type",objToReturn);
-        retrieveValues("http://uqasar.pythonanywhere.com/cube/jira/members/Created", "Created",objToReturn);
+        retrieveValues("http://uqasar.pythonanywhere.com/cube/jira/members/Type", "Type", objToReturn);
+        retrieveValues("http://uqasar.pythonanywhere.com/cube/jira/members/Created", "Created", objToReturn);
 
         response.setContentType("text/x-json;charset=UTF-8");
         response.setHeader("Cache-Control", "no-cache");
@@ -74,22 +74,28 @@ public class getmodel extends HttpServlet {
         response.getWriter().close();
     }
 
-    private JSONObject retrieveValues(String url, String filtername,JSONObject objToReturn) {
+    private JSONObject retrieveValues(String url, String filtername, JSONObject objToReturn) {
 
         try {
             JSONObject json = readJsonFromUrl(url);
-            JSONArray arr = json.getJSONArray("data");
 
-            JSONObject values = new JSONObject();
-            for (int i = 0; i < arr.length(); i++) {
+            if (json.has("error")) {
+                System.out.println("exo errorrrrrrrrrr!!!!");
+                objToReturn.put("error", json.get("error"));
+                return objToReturn;
+            } else {
 
-                String value = arr.getJSONObject(i).getString(filtername);
-                values.put(value, value);
-                objToReturn.put(filtername, values.toString());
+                JSONArray arr = json.getJSONArray("data");
 
+                JSONObject values = new JSONObject();
+                for (int i = 0; i < arr.length(); i++) {
+
+                    String value = arr.getJSONObject(i).getString(filtername);
+                    values.put(value, value);
+                    objToReturn.put(filtername, values.toString());
+
+                }
             }
-        } catch (IOException ex) {
-            Logger.getLogger(getmodel.class.getName()).log(Level.SEVERE, null, ex);
         } catch (JSONException ex) {
             Logger.getLogger(getmodel.class.getName()).log(Level.SEVERE, null, ex);
         }
