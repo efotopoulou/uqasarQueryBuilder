@@ -8,6 +8,7 @@ import java.io.Reader;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -21,17 +22,17 @@ public class Util {
 
     public static void main(String[] args) {
         Util util = new Util();
-//        Util.retrieveDimensions("http://uqasar.pythonanywhere.com/cube/jira/model");
-        System.out.println(Util.createExpressionEditor(null));
+        System.out.println(Util.createExpressionEditor(null,"http://uqasar.pythonanywhere.com"));
 
     }//EoM      
 
-    public static String createExpressionEditor(String cubeurl) {
+    public static String createExpressionEditor(String cubeurl,String uqasarOLAPDNS) {
         String script = "";
 
         if (cubeurl == null || cubeurl.equalsIgnoreCase("")) {
-//            cubeurl = "http://uqasar.pythonanywhere.com/cube/jira";
-            cubeurl = "http://uqasar.pythonanywhere.com/cube/sonarqube";
+            
+            List cubes = retrieveCubes(uqasarOLAPDNS + "/cubes");
+            cubeurl = uqasarOLAPDNS + "/cube/"+ cubes.get(0);
         }
 
         ArrayList dimensions = new ArrayList();
@@ -130,7 +131,37 @@ public class Util {
         }//while
 
         return objToReturn;
-    }//EoM      
+    }//EoM   
+
+    public static List retrieveCubes(String url) {
+        ArrayList objToReturn = new ArrayList();
+        int maxretries = 10;
+        boolean wellexecuted = false;
+        while (wellexecuted == false && maxretries > 0) {
+            try {
+                maxretries--;
+                System.out.println("to url pou prospatho na xtipitso" + url);
+                JSONArray jsonArray = readJsonArrayFromUrl(url);
+
+                if (jsonArray.length() == 0) {
+                    System.out.println("Error during cubes retrieval");
+                    objToReturn = null;
+                } else {
+                    for (int i = 0; i < jsonArray.length(); i++) {
+                        String value = jsonArray.getJSONObject(i).getString("name");
+                        System.out.println("Retrieved cubes: " + value);
+                        objToReturn.add(value);
+                    }//for
+                    wellexecuted = true;
+                }//else
+            } catch (JSONException ex) {
+                ex.printStackTrace();
+                wellexecuted = false;
+            }//catch            
+        }//while
+
+        return objToReturn;
+    }//EoM 
 
     public static JSONObject readJsonFromUrl(String url) throws JSONException {
         InputStream is = null;
@@ -157,6 +188,32 @@ public class Util {
 
         return json;
     }//EoM    
+
+    public static JSONArray readJsonArrayFromUrl(String url) throws JSONException {
+        InputStream is = null;
+        JSONArray json = null;
+
+        int maxretries = 10;
+        boolean wellexecuted = false;
+        while (wellexecuted == false && maxretries > 0) {
+            try {
+                maxretries--;
+                is = new URL(url).openStream();
+                BufferedReader rd = new BufferedReader(new InputStreamReader(is, Charset.forName("UTF-8")));
+                String jsonText = readAll(rd);
+                json = new JSONArray(jsonText);
+                is.close();
+                wellexecuted = true;
+            } catch (IOException ex) {
+                ex.printStackTrace();
+                json = new JSONArray();
+
+                wellexecuted = false;
+            }
+        }//while
+
+        return json;
+    }//EoM 
 
     public static String readAll(Reader rd) throws IOException {
         StringBuilder sb = new StringBuilder();
@@ -191,7 +248,7 @@ public class Util {
                 wellexecuted = true;
             } catch (JSONException ex) {
                 ex.printStackTrace();
-                wellexecuted = false;                
+                wellexecuted = false;
             }
         }//while
         return ret;
@@ -223,6 +280,75 @@ public class Util {
                 + "             //$.unblockUI();"
                 + " </script>               ";
         return str;
-    }//EoM     
+    }//EoM    
+
+    public static String createSummaryTable(JSONObject cuberesponse) {
+        //create table with summary
+
+        String summary_table = "<table cellpadding='10'>";
+
+        JSONObject summaryjson = cuberesponse.getJSONObject("summary");
+        Iterator iter = summaryjson.keys();
+        while (iter.hasNext()) {
+            String key = (String) iter.next();
+            String value = summaryjson.get(key).toString();
+
+            summary_table += "<tr>";
+            summary_table += "<td>" + key + "</td>";
+            summary_table += "<td>" + value + "</td>";
+            summary_table += "</tr>";
+        }
+
+        summary_table += "</table>";
+        System.out.println("summary_table:  " + summary_table);
+        return summary_table;
+    }//EoM 
+
+    public static String getAvailableCubes(String uqasarOLAPDNS) {
+
+        List cubes = retrieveCubes(uqasarOLAPDNS + "/cubes");
+
+        String select = " <form id=\"cubeSelector\" method=\"POST\" action=\"./index.jsp\"><select>";
+
+        for (Object cube : cubes) {
+
+            select += "  <option value=\"" + uqasarOLAPDNS + "/cube/" + cube + "\">" + cube + "</option>";
+        }
+        select += "</select>\n";
+
+        select += "<input style=\"display:none;\" type=\"text\" name=\"cubeToLoad\" id=\"cubeToLoad\" value=\"" + uqasarOLAPDNS + "/cube/" + cubes.get(0).toString() + "\">\n";
+
+        select += "<input style=\"display:none;\" type=\"submit\" value=\"Submit\"></form>";
+
+        return select;
+    }//EoM 
+
+
+    public static String constructCubeRetrieverURL(String jsonToParse, String cubeendpoint) { 
+        
+        String firstdrilldown = "";
+        String urlToLoad = cubeendpoint+"/aggregate?";
+
+        JSONObject obj = new JSONObject(jsonToParse);
+        JSONArray arr = obj.getJSONArray("rules");
+        for (int i = 0; i < arr.length(); i++) {
+            String id = arr.getJSONObject(i).getString("id");
+
+            if (id.equalsIgnoreCase("drilldown")) {
+
+                String value = arr.getJSONObject(i).getString("value");
+                urlToLoad += "&drilldown=" + value;
+
+                if (firstdrilldown.equalsIgnoreCase("")) {
+                    firstdrilldown = value;
+                }
+            } else {
+                urlToLoad += "&cut=" + arr.getJSONObject(i).getString("id") + ":" + arr.getJSONObject(i).getString("value");
+            }
+        }
+        
+        System.out.println("urlToLoad: "+urlToLoad);
+        return urlToLoad;
+    }//EoM
 
 }//EoC

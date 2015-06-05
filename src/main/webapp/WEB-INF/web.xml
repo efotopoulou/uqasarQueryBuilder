@@ -5,17 +5,9 @@
         <servlet-name>uqquerybuilder</servlet-name>
         <servlet-class>eu.uqasar.reporting.Querybuilder</servlet-class>
     </servlet>
-    <servlet>
-        <servlet-name>getmodel</servlet-name>
-        <servlet-class>eu.uqasar.reporting.getmodel</servlet-class>
-    </servlet>
     <servlet-mapping>
         <servlet-name>uqquerybuilder</servlet-name>
         <url-pattern>/uqquerybuilder</url-pattern>
-    </servlet-mapping>
-    <servlet-mapping>
-        <servlet-name>getmodel</servlet-name>
-        <url-pattern>/getmodel</url-pattern>
     </servlet-mapping>
     <session-config>
         <session-timeout>

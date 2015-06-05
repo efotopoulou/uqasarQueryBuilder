@@ -1,3 +1,4 @@
+<%@page import="org.json.JSONObject"%>
 <%@ page import="eu.uqasar.reporting.util.Util" %>
 <!DOCTYPE html>
 <html lang="en">
@@ -20,36 +21,25 @@
         <script src="js/jquery.blockUI.js"></script>
         <script src="js/xepOnline.jqPlugin.js"></script>
 
-<!--        <script src="js/u-qasar.js"></script>-->
-        
-
-        
         <style>
             tr:nth-child(odd)		{ background-color:#eee; }
             tr:nth-child(even)		{ background-color:#fff; }
             td { padding-right: 15px;}
-        </style>
-        <script>
-//            $(function() {
-//                $.blockUI({css: {
-//                        border: 'none',
-//                        padding: '15px',
-//                        backgroundColor: '#000',
-//                        '-webkit-border-radius': '10px',
-//                        '-moz-border-radius': '10px',
-//                        opacity: .5,
-//                        color: '#fff'
-//                    }});
-//            });
-        </script>    
+        </style>   
     </head>
 
     <body>
-        <!--jsp:include page="/getmodel" /-->
         <div class="container">
             <h1>
                 <img src="img/logo.png" />
             </h1>
+            Select type of cube you want to parse:
+
+            <%
+                String uqasarOLAPDNS = "http://uqasar.pythonanywhere.com";
+                out.print(Util.getAvailableCubes(uqasarOLAPDNS));
+            %>
+
 
             <div class="row marketing">
                 <p align="center">
@@ -79,8 +69,8 @@
                     <h3>Cube Retriever</h3>
                     <pre></pre>
                 </div>
-                <div id="totalcount" class="hide">
-                    <h3>Total count</h3>
+                <div id="summary" class="hide">
+                    <h3>Summary</h3>
                     <pre></pre>
                 </div>
                 <div id="toprint">
@@ -90,13 +80,11 @@
 
 
                         <div id="cubetable" class="hide">
-                            <h3>Cube Report (total count:<span id="totalcountdetaill"></span>) </h3>
+                            <h3>Cube Report</h3>
                             <pre></pre>
                         </div>  
                     </div>
                     <div id="donutchart" style="width:500px;height:500px;"></div>
-
-
 
                 </div>
 
@@ -121,145 +109,149 @@
                 <script src="js/query-builder.standalone.min.js"></script>
                 <!--script src="js/query-builder.js"></script-->
 
-        <% 
-            out.print(Util.createExpressionEditor(null));
-        %>
+                <%
+                    if (request.getParameter("cubeToLoad") != null) {
+                        out.print(Util.createExpressionEditor(request.getParameter("cubeToLoad"),""));
+                %>   
+
+                <script> $('#cubeSelector option[value="<%=request.getParameter("cubeToLoad")%>"]').attr('selected', 'selected');</script>
+
+                <%
+                    } else {
+                        out.print(Util.createExpressionEditor(null,uqasarOLAPDNS));
+                    }
+                %>
 
                 <script>
-            $(document).ready(function() {
+                    $(document).ready(function() {
 
+                        $("#cubeSelector").change(function() {
 
-                var converterEngine = function(input) { // fn BLOB => Binary => Base64 ?
-                    var uInt8Array = new Uint8Array(input),
-                            i = uInt8Array.length;
-                    var biStr = []; //new Array(i);
-                    while (i--) {
-                        biStr[i] = String.fromCharCode(uInt8Array[i]);
-                    }
-                    var base64 = window.btoa(biStr.join(''));
-                    return base64;
-                };
+                            $('#cubeToLoad').val($('#cubeSelector :selected').val());
 
-                var getImageBase64 = function(url, callback) {
-                    // 1. Loading file from url:
-                    var xhr = new XMLHttpRequest(url);
-                    xhr.open('GET', url, true); // url is the url of a PNG image.
-                    xhr.responseType = 'arraybuffer';
-                    xhr.callback = callback;
-                    xhr.onload = function(e) {
-                        if (this.status == 200) { // 2. When loaded, do:
-                            var imgBase64 = converterEngine(this.response); // convert BLOB to base64
-                            this.callback(imgBase64);//execute callback function with data
-                        }
-                    };
-                    xhr.send();
-                };
-
-                getImageBase64('img/logo1.png', function(data) {
-                    $("#myImage").attr("src", "data:image/png;base64," + data);  // inject data:image in DOM
-                })
-
-            });
-
-
-
-
-            $('#print').click(function() {
-
-                $('#myImage').removeClass('hide');
-                printMe();
-                $('#myImage').addClass('hide');
-            });
-            function printMe() {
-                xepOnline.Formatter.Format('toprint');
-
-            }
-
-            // reset builder
-            $('.reset').on('click', function() {
-                $('#builder-' + $(this).data('target')).queryBuilder('reset');
-                $('#result-' + $(this).data('target')).addClass('hide');
-            });
-
-            // get rules
-            $('.parse-json').on('click', function() {
-                var res = $('#builder-' + $(this).data('target')).queryBuilder('getRules');
-                $('#result-' + $(this).data('target')).removeClass('hide')
-                        .find('pre').html(
-                        JSON.stringify(res, null, 2)
-                        );
-
-
-
-                $.post('/uqasarQueryBuilderNew-1.0-SNAPSHOT/uqquerybuilder',
-                        {
-                            data: JSON.stringify(res, null, 2),
-                        },
-                        function(data, status) {
-
-                            if (data.error){alert('Message From Query Builder '+data.error);}
-
-                            $('#donutchart').html('');
-                            $('#cubeurl').removeClass('hide').find('pre').html(data.cubeurl);
-                            $('#totalcount').removeClass('hide').find('pre').html(JSON.stringify(data.totalcount.count.valueOf(), null, 2));
-
-                            var totalcuberesponse = JSON.stringify(data.totalcuberesponse, null, 2);
-
-                            if (totalcuberesponse) {
-                                $('#totalcuberesponse').removeClass('hide').find('pre').html(totalcuberesponse);
-
-                                var cubetable = data.cubetable.valueOf();
-                                $('#cubetable').removeClass('hide').find('pre').html(cubetable);
-                            } else {
-                                $('#totalcuberesponse').addClass('hide');
-                                $('#result-basic').addClass('hide');
-                                $('#cubetable').addClass('hide');
+                            $('#cubeSelector').submit();
+                        });
+                        var converterEngine = function(input) { // fn BLOB => Binary => Base64 ?
+                            var uInt8Array = new Uint8Array(input),
+                                    i = uInt8Array.length;
+                            var biStr = []; //new Array(i);
+                            while (i--) {
+                                biStr[i] = String.fromCharCode(uInt8Array[i]);
                             }
+                            var base64 = window.btoa(biStr.join(''));
+                            return base64;
+                        };
 
-                            var totalcountdetaill = JSON.stringify(data.totalcount.count.valueOf(), null, 2);
-                            if (totalcountdetaill) {
-                                $('#totalcountdetaill').removeClass('hide').html(JSON.stringify(data.totalcount.count.valueOf(), null, 2));
-                            } else {
-                                $('#totalcountdetaill').addClass('hide');
-                            }
-
-
-
-
-                            var donutchartjson = JSON.parse(data.donutchart);
-                            if (donutchartjson) {
-                                var count = Object.keys(donutchartjson).length;
-
-
-
-                                var chart = Morris.Donut({
-                                    element: 'donutchart',
-                                    data: [0, 0],
-                                    resize: true
-                                });
-
-                                function calcdata() {
-                                    var ret = [];
-                                    for (i in donutchartjson)
-                                    {
-                                        ret.push({
-                                            label: "" + i + "", value: donutchartjson[i].valueOf()
-                                        });
-                                    }
-                                    return ret;
+                        var getImageBase64 = function(url, callback) {
+                            // 1. Loading file from url:
+                            var xhr = new XMLHttpRequest(url);
+                            xhr.open('GET', url, true); // url is the url of a PNG image.
+                            xhr.responseType = 'arraybuffer';
+                            xhr.callback = callback;
+                            xhr.onload = function(e) {
+                                if (this.status == 200) { // 2. When loaded, do:
+                                    var imgBase64 = converterEngine(this.response); // convert BLOB to base64
+                                    this.callback(imgBase64);//execute callback function with data
                                 }
+                            };
+                            xhr.send();
+                        };
 
-                                chart.setData(calcdata());
-                            } else {
-                                $('#totalcountdetaill').addClass('hide');
+                        getImageBase64('img/logo1.png', function(data) {
+                            $("#myImage").attr("src", "data:image/png;base64," + data);  // inject data:image in DOM
+                        })
+
+                    });
 
 
-                            }
 
-                        }, "json");
 
-            });
+                    $('#print').click(function() {
 
+                        $('#myImage').removeClass('hide');
+                        printMe();
+                        $('#myImage').addClass('hide');
+                    });
+                    function printMe() {
+                        xepOnline.Formatter.Format('toprint');
+
+                    }
+
+                    // reset builder
+                    $('.reset').on('click', function() {
+                        $('#builder-' + $(this).data('target')).queryBuilder('reset');
+                        $('#result-' + $(this).data('target')).addClass('hide');
+                    });
+
+                    // get rules
+                    $('.parse-json').on('click', function() {
+                        var res = $('#builder-' + $(this).data('target')).queryBuilder('getRules');
+                        $('#result-' + $(this).data('target')).removeClass('hide')
+                                .find('pre').html(
+                                JSON.stringify(res, null, 2)
+                                );
+
+                        $.post('./uqquerybuilder',
+                                {
+                                    data: {rules: JSON.stringify(res, null, 2), cube: $('#cubeSelector :selected').val()},
+                                },
+                                function(data, status) {
+
+                                    if (data.error) {
+                                        alert('Message From Query Builder ' + data.error);
+                                    }
+
+                                    $('#donutchart').html('');
+                                    $('#cubeurl').removeClass('hide').find('pre').html(data.cubeurl);
+
+                                    $('#summary').removeClass('hide').find('pre').html(data.summary);
+
+                                    var totalcuberesponse = JSON.stringify(data.totalcuberesponse, null, 2);
+
+                                    if (totalcuberesponse) {
+                                        $('#totalcuberesponse').removeClass('hide').find('pre').html(totalcuberesponse);
+
+                                        var cubetable = data.cubetable.valueOf();
+                                        $('#cubetable').removeClass('hide').find('pre').html(cubetable);
+                                    } else {
+                                        $('#totalcuberesponse').addClass('hide');
+                                        $('#result-basic').addClass('hide');
+                                        $('#cubetable').addClass('hide');
+                                    }
+
+                                    var donutchartjson = JSON.parse(data.donutchart);
+                                    if (donutchartjson) {
+                                        var count = Object.keys(donutchartjson).length;
+
+                                        if (count==0){
+                                         $('#donutchart').hide();   
+                                        }else{
+                                         $('#donutchart').show();                                            
+                                        }
+
+                                        var chart = Morris.Donut({
+                                            element: 'donutchart',
+                                            data: [0, 0],
+                                            resize: true
+                                        });
+
+                                        function calcdata() {
+                                            var ret = [];
+                                            for (i in donutchartjson)
+                                            {
+                                                ret.push({
+                                                    label: "" + i + "", value: donutchartjson[i].valueOf()
+                                                });
+                                            }
+                                            return ret;
+                                        }
+
+                                        chart.setData(calcdata());
+                                    }
+
+                                }, "json");
+
+                    });
                 </script>
 
 
